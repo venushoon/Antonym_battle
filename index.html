@@ -40,6 +40,11 @@
     }
 
     .btn-pressed { transform: scale(0.95) !important; filter: brightness(0.9); transition: all 0.1s; }
+    
+    /* 오답 노트 스크롤바 커스텀 */
+    .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+    .custom-scrollbar::-webkit-scrollbar-track { background: #f1f5f9; border-radius: 4px; }
+    .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
   </style>
 </head>
 <body class="h-[100dvh] w-screen flex flex-col bg-slate-900 text-slate-100">
@@ -49,7 +54,7 @@
       ✨ 반의어 배틀 게임
     </h1>
 
-    <div class="bg-white rounded-[2rem] lg:rounded-[3rem] shadow-2xl p-6 lg:p-10 w-full max-w-4xl flex flex-col gap-6 lg:gap-8 border-4 lg:border-8 border-blue-400 max-h-[85dvh] overflow-y-auto">
+    <div class="bg-white rounded-[2rem] lg:rounded-[3rem] shadow-2xl p-6 lg:p-10 w-full max-w-4xl flex flex-col gap-6 lg:gap-8 border-4 lg:border-8 border-blue-400 max-h-[85dvh] overflow-y-auto custom-scrollbar">
       
       <div>
         <h2 class="text-xl lg:text-2xl font-bold text-slate-600 mb-3 text-center">👥 몇 명이서 대결할까요?</h2>
@@ -107,19 +112,19 @@
   </div>
 
   <div id="result-screen" class="hidden absolute inset-0 z-30 flex items-center justify-center bg-slate-900/90 backdrop-blur-md p-4 modal-in">
-    <div class="bg-white rounded-[2rem] lg:rounded-[3rem] shadow-2xl w-full max-w-3xl lg:max-w-4xl overflow-hidden text-center border-4 lg:border-8 border-amber-400 flex flex-col max-h-[90dvh]">
-      <div class="bg-gradient-to-r from-amber-400 to-orange-500 text-white py-6 lg:py-8 flex-shrink-0">
-        <h2 class="text-3xl lg:text-5xl font-black tracking-tight drop-shadow-md">🏆 배틀 종료! 최종 순위</h2>
+    <div class="bg-white rounded-[2rem] lg:rounded-[3rem] shadow-2xl w-full max-w-4xl lg:max-w-5xl overflow-hidden text-center border-4 lg:border-8 border-emerald-400 flex flex-col max-h-[90dvh]">
+      <div class="bg-gradient-to-r from-emerald-400 to-teal-500 text-white py-6 lg:py-8 flex-shrink-0">
+        <h2 class="text-3xl lg:text-5xl font-black tracking-tight drop-shadow-md">🏆 배틀 종료 및 결과 확인</h2>
       </div>
       
-      <div class="p-4 lg:p-8 space-y-3 lg:space-y-4 bg-slate-50 overflow-y-auto flex-1" id="ranking-container">
+      <div class="p-4 lg:p-8 space-y-4 lg:space-y-6 bg-slate-50 overflow-y-auto flex-1 custom-scrollbar" id="ranking-container">
         </div>
 
-      <div class="p-4 lg:p-8 flex gap-3 lg:gap-4 bg-white flex-shrink-0">
+      <div class="p-4 lg:p-8 flex gap-3 lg:gap-4 bg-white flex-shrink-0 border-t border-slate-200">
         <button onclick="window.goToHome()" class="flex-1 rounded-full py-4 lg:py-6 text-xl lg:text-3xl font-black bg-slate-200 text-slate-700 shadow-lg hover:bg-slate-300 transition-transform active:scale-95">
           🏠 처음으로
         </button>
-        <button onclick="window.startGame()" class="flex-1 rounded-full py-4 lg:py-6 text-xl lg:text-3xl font-black bg-amber-400 text-amber-900 shadow-lg hover:bg-amber-300 transition-transform active:scale-95">
+        <button onclick="window.startGame()" class="flex-1 rounded-full py-4 lg:py-6 text-xl lg:text-3xl font-black bg-emerald-400 text-emerald-900 shadow-lg hover:bg-emerald-300 transition-transform active:scale-95">
           🔄 다시 한판!
         </button>
       </div>
@@ -207,10 +212,8 @@
       return copied;
     }
 
-    // 초기 파싱 수행
     wordBank = parseCSV(SAMPLE_CSV_DATA);
 
-    // ================= 전역(Window) 함수 등록 (오류 방지 핵심) =================
     window.downloadTemplate = function() {
       const blob = new Blob(["\uFEFF" + SAMPLE_CSV_DATA], { type: "text/csv;charset=utf-8;" });
       const link = document.createElement("a");
@@ -283,19 +286,20 @@
       for (let i = 0; i < config.playerCount; i++) {
         const theme = THEMES[i];
         
+        // 오답 기록을 위한 wrongAnswers 배열 추가
         playersState[theme.id] = {
           score: 0,
           usedIndices: [], 
           seqIndex: 0,     
           currentRound: null,
           isLocked: false,
-          timeout: null
+          timeout: null,
+          wrongAnswers: [] 
         };
 
         const pCol = document.createElement('div');
         pCol.className = `flex-1 flex flex-col border-r-2 md:border-r-4 border-slate-900 ${theme.bgMain} relative overflow-hidden min-w-0`;
         
-        // ** 핵심 수정: 문제 및 보기 글자 비율 조정 **
         pCol.innerHTML = `
           <div class="h-12 md:h-16 flex items-center justify-between px-2 md:px-4 border-b-2 md:border-b-4 ${theme.border} bg-slate-900/50 flex-shrink-0">
             <div class="flex items-center gap-1 md:gap-2 overflow-hidden w-2/3">
@@ -376,15 +380,11 @@
       
       state.currentRound.choices.forEach(choice => {
         const btn = document.createElement('button');
-        // ** 핵심 수정: 보기 글자 비율 축소 (md:text-lg, lg:text-2xl) **
         btn.className = `w-full h-full rounded-xl md:rounded-2xl border-2 md:border-4 border-slate-700 ${theme.bgCard} text-slate-200 text-xs sm:text-sm md:text-lg lg:text-2xl font-black shadow-md flex items-center justify-center break-keep leading-tight hover:border-slate-500 touch-none select-none p-1 md:p-2 text-center overflow-hidden`;
-        
-        // 텍스트를 담을 스팬 추가 및 비율 기반 말줄임 차단
         btn.innerHTML = `<span class="break-keep w-full overflow-hidden text-center">${choice.text}</span>`;
         
-        // ** 멀티터치 및 중복클릭 완전 차단 로직 (유지) **
         btn.addEventListener('pointerdown', (e) => {
-          if (e.cancelable) e.preventDefault(); // 스크롤, 줌 등 브라우저 기본 행동 캔슬
+          if (e.cancelable) e.preventDefault();
           handleChoice(pid, choice, btn, theme);
         });
         
@@ -394,7 +394,6 @@
 
     function handleChoice(pid, choice, btnElement, theme) {
       const state = playersState[pid];
-      // 게임 종료 상태이거나 이미 터치하여 딜레이 중일 때 완전히 막음
       if (globalTimeLeft <= 0 || state.isLocked) return;
       state.isLocked = true; 
 
@@ -410,14 +409,19 @@
         document.getElementById(`score-${pid}`).classList.add('text-amber-400', 'scale-125');
         setTimeout(() => document.getElementById(`score-${pid}`).classList.remove('text-amber-400', 'scale-125'), 300);
 
-        // 정답 버튼 글자 비율 유지
         btnElement.className = `w-full h-full rounded-xl md:rounded-2xl border-2 md:border-4 ${theme.correct} text-xs sm:text-sm md:text-lg lg:text-2xl font-black shadow-md flex items-center justify-center break-keep leading-tight touch-none p-1 md:p-2 overflow-hidden`;
         btnElement.innerHTML = `<span class="break-keep w-full overflow-hidden text-center">${choice.text}</span>`;
         
         feedbackText.innerText = '⭕';
         feedbackText.className = "text-[6rem] md:text-[8rem] font-black text-emerald-400 drop-shadow-[0_0_20px_rgba(52,211,153,0.8)] pop-in";
       } else {
-        // 오답 버튼 글자 비율 유지
+        // 오답일 경우 배열에 기록 저장 (제시어, 학생이 고른 오답, 원래 정답)
+        state.wrongAnswers.push({
+          word: state.currentRound.word,
+          wrong: choice.text,
+          correct: state.currentRound.answer
+        });
+
         btnElement.className = `w-full h-full rounded-xl md:rounded-2xl border-2 md:border-4 ${theme.wrong} text-xs sm:text-sm md:text-lg lg:text-2xl font-black shadow-md flex items-center justify-center break-keep leading-tight touch-none p-1 md:p-2 overflow-hidden`;
         btnElement.innerHTML = `<span class="break-keep w-full overflow-hidden text-center">${choice.text}</span>`;
         
@@ -434,20 +438,23 @@
       state.timeout = setTimeout(() => {
         feedbackEl.style.opacity = '0';
         buildNextRound(pid);
-      }, 500); // 0.5초 대기
+      }, 500); 
     }
 
     function endGame() {
       clearInterval(globalTimer);
-      Object.values(playersState).forEach(s => s.isLocked = true); // 모든 터치 봉인
+      Object.values(playersState).forEach(s => s.isLocked = true); 
 
       const results = [];
       for (let i = 0; i < config.playerCount; i++) {
         results.push({
           theme: THEMES[i],
-          score: playersState[THEMES[i].id].score
+          score: playersState[THEMES[i].id].score,
+          wrongAnswers: playersState[THEMES[i].id].wrongAnswers // 오답 데이터 전달
         });
       }
+      
+      // 점수 순으로 내림차순 정렬
       results.sort((a, b) => b.score - a.score);
 
       const rankingContainer = document.getElementById('ranking-container');
@@ -457,15 +464,33 @@
       
       results.forEach((res, index) => {
         const item = document.createElement('div');
-        item.className = `flex items-center justify-between p-3 md:p-5 rounded-2xl md:rounded-3xl bg-white border-2 md:border-4 ${res.theme.border} shadow-sm`;
+        item.className = `flex flex-col p-4 md:p-6 rounded-2xl md:rounded-3xl bg-white border-2 md:border-4 ${res.theme.border} shadow-sm`;
+        
+        // 오답 노트 HTML 생성
+        const wrongListHtml = res.wrongAnswers.length > 0 
+          ? res.wrongAnswers.map(w => `<li class="bg-slate-100 p-2 md:p-3 rounded-xl text-sm md:text-base break-keep shadow-sm"><span class="font-bold text-slate-800 text-base md:text-lg mr-1">'${w.word}'</span>의 반의어는 <span class="text-rose-500 line-through mx-1">${w.wrong}</span>👉 <span class="font-bold text-emerald-600 ml-1">${w.correct}</span></li>`).join('')
+          : `<li class="bg-emerald-50 p-3 md:p-4 rounded-xl text-sm md:text-base font-bold text-emerald-600 text-center shadow-sm">전부 맞혔어요! 완벽해요! 🎉</li>`;
+
         item.innerHTML = `
-          <div class="flex items-center gap-2 md:gap-4 overflow-hidden w-2/3">
-            <span class="text-xl md:text-4xl font-black ${index === 0 ? 'text-amber-500' : 'text-slate-500'} w-12 md:w-24 flex-shrink-0">${medals[index]}</span>
-            <span class="text-3xl md:text-5xl flex-shrink-0">${res.theme.icon}</span>
-            <span class="text-lg sm:text-xl md:text-4xl font-black ${res.theme.text} truncate break-keep">${res.theme.name}</span>
+          <div class="flex items-center justify-between border-b-2 border-slate-100 pb-3 md:pb-4 mb-3 md:mb-4">
+            <div class="flex items-center gap-2 md:gap-4 overflow-hidden w-2/3">
+              <span class="text-xl md:text-4xl font-black ${index === 0 ? 'text-amber-500' : 'text-slate-500'} w-12 md:w-24 flex-shrink-0">${medals[index]}</span>
+              <span class="text-3xl md:text-5xl flex-shrink-0">${res.theme.icon}</span>
+              <span class="text-lg sm:text-xl md:text-4xl font-black ${res.theme.text} truncate break-keep">${res.theme.name}</span>
+            </div>
+            <div class="text-2xl md:text-5xl font-black text-slate-800 flex-shrink-0 text-right w-1/3">
+              ${res.score} <span class="text-sm md:text-2xl text-slate-400">점</span>
+            </div>
           </div>
-          <div class="text-2xl md:text-5xl font-black text-slate-800 flex-shrink-0 text-right w-1/3">
-            ${res.score} <span class="text-sm md:text-2xl text-slate-400">점</span>
+          
+          <div class="text-left w-full max-h-48 md:max-h-60 overflow-y-auto custom-scrollbar pr-2">
+            <p class="text-xs md:text-sm font-bold text-slate-400 mb-2 flex items-center gap-1">
+              <span>💡 나의 오답 노트</span>
+              <span class="bg-slate-200 text-slate-500 rounded-full px-2 py-0.5 text-[10px] md:text-xs">${res.wrongAnswers.length}개</span>
+            </p>
+            <ul class="space-y-2">
+              ${wrongListHtml}
+            </ul>
           </div>
         `;
         rankingContainer.appendChild(item);
